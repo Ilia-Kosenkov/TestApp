@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 [assembly:InternalsVisibleTo("TestApp.Test")]
@@ -7,36 +8,102 @@ namespace TestApp
 {
     internal class InputParser
     {
-        public void Parse(ReadOnlySpan<char> input)
+        public Input Parse(ReadOnlySpan<char> input)
         {
-            var prev = 0;
-            var curr = 0;
             Input? result = null;
-            while (curr < input.Length)
+            var prev = 0;
+            for (var curr = 0; curr < input.Length; curr++)
             {
-                var ch = input[curr++];
-                if (char.IsDigit(ch))
-                {
-                    continue;
-                }
-
+                var ch = input[curr];
                 if (ch == ',')
                 {
-                    // Parse(input[prev..curr]);
-                    prev = curr;
+                    var temp = ParseListItem(input[prev..curr]);
+                    prev = curr + 1;
+                    result = result switch
+                    {
+                        ListInput li => li.Add(temp),
+                        null => new ListInput(temp),
+                        not null => throw new InvalidOperationException()
+                    };
                 }
             }
 
-            if (input[prev..curr].Trim().Equals("*", StringComparison.OrdinalIgnoreCase))
+            var lastItem = ParseListItem(input[prev..]);
+            return result switch
+            {
+                null => lastItem,
+                ListInput li => li.Add(lastItem),
+                _ => throw new InvalidOperationException()
+            };
+        }
+
+        private Input ParseListItem(ReadOnlySpan<char> input)
+        {
+            if (input.IsEmpty)
+            {
+                throw new ArgumentException();
+            }
+
+            var rngPos = -1;
+            var stepPos = input.Length;
+
+            for (var i = 0; i < input.Length; i++)
+            {
+                var ch = input[i];
+                if (ch is '-')
+                {
+                    rngPos = i;
+                } 
+                else if (ch is '/')
+                {
+                    stepPos = i;
+                }
+            }
+
+            Input? result;
+            
+            if (rngPos != -1)
+            {
+                if (
+                    int.TryParse(input[..rngPos], out var lhs) &&
+                    int.TryParse(input[(rngPos + 1)..stepPos], out var rhs) &&
+                    lhs <= rhs
+                )
+                {
+                    result = new RangeInput() { LowerLimit = lhs, UpperLimit = rhs };
+                }
+                else
+                {
+                    throw new ArgumentException();
+                }
+            }
+            else if (input[0] is '*' && stepPos == 1)
             {
                 result = new AnyInput();
             }
-
-            if (int.TryParse(input[prev..curr], out var intVal))
+            else
             {
-                result = new SingularInput() { Value = intVal };
+                if (int.TryParse(input[..stepPos], out var val) && val >= 0)
+                {
+                    result = new SingularInput() { Value = val };
+                }
+                else
+                {
+                    throw new ArgumentException();
+                }
             }
 
+            if (stepPos == input.Length)
+            {
+                return result;
+            }
+
+            if (stepPos is var _ && (int.TryParse(input.Slice(stepPos + 1), out var stepBy) && stepBy > 0))
+            {
+                return new StepByInput { ValueRange = result, StepBy = stepBy };
+            }
+            
+            throw new ArgumentException();
         }
     }
 }

@@ -33,20 +33,28 @@ namespace TestApp
 
     internal record ListInput : Input
     {
-        private readonly Input[] _elements = Array.Empty<Input>();
+        private readonly List<Input> _elements;
+
+        public IReadOnlyCollection<Input> Items => _elements;
 
         public ListInput(params Input[] input)
         {
-            if (_elements.Length != input.Length)
+            _elements = new List<Input>(input.Length);
+            foreach (var item in input)
             {
-                _elements = new Input[input.Length];
+                _elements.Add(item);
             }
-
-            input.CopyTo(_elements.AsSpan());
         }
 
-        public ListInput(IEnumerable<Input> input) : this(input.ToArray())
+        public ListInput(IEnumerable<Input> input) 
         {
+            _elements = input.ToList();
+        }
+
+        public ListInput Add(Input i)
+        {
+            _elements.Add(i);
+            return this;
         }
     }
 }
