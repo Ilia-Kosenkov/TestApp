@@ -14,15 +14,15 @@ namespace TestApp
     {
     }
 
-    internal record SingularInput(int Value) : Input
+    internal record SingularInput(uint Value) : Input
     {
     }
 
-    internal record RangeInput(int LowerLimit, int UpperLimit) : Input
+    internal record RangeInput(uint LowerLimit, uint UpperLimit) : Input
     {
     }
 
-    internal record StepByInput(Input ValueRange, int StepBy) : Input
+    internal record StepByInput(Input ValueRange, uint StepBy) : Input
     {
     }
 

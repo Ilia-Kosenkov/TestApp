@@ -65,8 +65,8 @@ namespace TestApp
             if (rngPos != -1)
             {
                 if (
-                    int.TryParse(input[..rngPos], out var lhs) &&
-                    int.TryParse(input[(rngPos + 1)..stepPos], out var rhs) &&
+                    uint.TryParse(input[..rngPos], out var lhs) &&
+                    uint.TryParse(input[(rngPos + 1)..stepPos], out var rhs) &&
                     lhs <= rhs
                 )
                 {
@@ -83,7 +83,7 @@ namespace TestApp
             }
             else
             {
-                if (int.TryParse(input[..stepPos], out var val) && val >= 0)
+                if (uint.TryParse(input[..stepPos], out var val))
                 {
                     result = new SingularInput(val);
                 }
@@ -98,7 +98,7 @@ namespace TestApp
                 return result;
             }
 
-            if (stepPos is var _ && (int.TryParse(input.Slice(stepPos + 1), out var stepBy) && stepBy > 0))
+            if (stepPos is var _ && (uint.TryParse(input[(stepPos + 1)..], out var stepBy) && stepBy > 0))
             {
                 return new StepByInput(result, stepBy);
             }
