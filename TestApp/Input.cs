@@ -7,28 +7,23 @@ namespace TestApp
 {
     internal abstract record Input
     {
-        
+
     }
 
     internal record AnyInput : Input
     {
     }
 
-    internal record SingularInput : Input
+    internal record SingularInput(int Value) : Input
     {
-        public int Value { get; init; }
     }
 
-    internal record RangeInput : Input
+    internal record RangeInput(int LowerLimit, int UpperLimit) : Input
     {
-        public int LowerLimit { get; init; }
-        public int UpperLimit { get; init; }
     }
 
-    internal record StepByInput : Input
+    internal record StepByInput(Input ValueRange, int StepBy) : Input
     {
-        public Input ValueRange { get; init; } = new AnyInput();
-        public int StepBy { get; init; }
     }
 
     internal record ListInput : Input

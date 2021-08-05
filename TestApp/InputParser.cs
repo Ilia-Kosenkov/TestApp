@@ -70,7 +70,7 @@ namespace TestApp
                     lhs <= rhs
                 )
                 {
-                    result = new RangeInput() { LowerLimit = lhs, UpperLimit = rhs };
+                    result = new RangeInput(lhs, rhs);
                 }
                 else
                 {
@@ -85,7 +85,7 @@ namespace TestApp
             {
                 if (int.TryParse(input[..stepPos], out var val) && val >= 0)
                 {
-                    result = new SingularInput() { Value = val };
+                    result = new SingularInput(val);
                 }
                 else
                 {
@@ -100,7 +100,7 @@ namespace TestApp
 
             if (stepPos is var _ && (int.TryParse(input.Slice(stepPos + 1), out var stepBy) && stepBy > 0))
             {
-                return new StepByInput { ValueRange = result, StepBy = stepBy };
+                return new StepByInput(result, stepBy);
             }
             
             throw new ArgumentException();
