@@ -7,18 +7,18 @@ namespace TestApp
 {
     internal abstract record Input
     {
-        public abstract bool TryWriteValues(Span<uint> buffer, uint upperLimit, out uint valsWritten);
+        public abstract bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten);
     }
 
     internal record AnyInput : Input
     {
-        public override bool TryWriteValues(Span<uint> buffer, uint upperLimit, out uint valsWritten)
+        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
             if (buffer.Length >= upperLimit)
             {
-                for (var i = 0u; i < upperLimit; i++)
+                for (ushort i = 0; i < upperLimit; i++)
                 {
-                    buffer[(int)i] = i;
+                    buffer[i] = i;
                 }
 
                 valsWritten = upperLimit;
@@ -30,9 +30,9 @@ namespace TestApp
         }
     }
 
-    internal record SingularInput(uint Value) : Input
+    internal record SingularInput(ushort Value) : Input
     {
-        public override bool TryWriteValues(Span<uint> buffer, uint upperLimit, out uint valsWritten)
+        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
             if (buffer.Length > 1)
             {
@@ -45,15 +45,15 @@ namespace TestApp
         }
     }
 
-    internal record RangeInput(uint LowerLimit, uint UpperLimit) : Input
+    internal record RangeInput(ushort LowerLimit, uint UpperLimit) : Input
     {
-        public override bool TryWriteValues(Span<uint> buffer, uint upperLimit, out uint valsWritten)
+        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
             if (buffer.Length >= UpperLimit - LowerLimit)
             {
                 for(var i = LowerLimit; i <= UpperLimit; i++)
                 {
-                    buffer[(int)(i - LowerLimit)] = i;
+                    buffer[(i - LowerLimit)] = i;
                 }
 
                 valsWritten = UpperLimit - LowerLimit + 1u;
@@ -65,16 +65,16 @@ namespace TestApp
         }
     }
 
-    internal record StepByInput(Input ValueRange, uint StepBy) : Input
+    internal record StepByInput(Input ValueRange, ushort StepBy) : Input
     {
-        public override bool TryWriteValues(Span<uint> buffer, uint upperLimit, out uint valsWritten)
+        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
             valsWritten = 0;
-            var (from, to) = ValueRange switch
+            (ushort from, ushort to) = ValueRange switch
             {
-                AnyInput => (0u, upperLimit),
-                RangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, rhs + 1),
-                _ => (0u, 0u)
+                AnyInput => (default, upperLimit),
+                RangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, (ushort)(rhs + 1)),
+                _ => (default(ushort), default(ushort))
             };
 
             if (buffer.Length >= (to - from - 1) / StepBy)
@@ -120,7 +120,7 @@ namespace TestApp
             return this;
         }
 
-        public override bool TryWriteValues(Span<uint> buffer, uint upperLimit, out uint valsWritten)
+        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
             valsWritten = 0;
             foreach (var item in _elements)
