@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 #nullable enable
@@ -101,6 +102,20 @@ namespace TestApp
 
         public IReadOnlyCollection<Input> Items => _elements;
 
+        public ListInput(ReadOnlySpan<Input> input)
+        {
+            _elements = new List<Input>(input.Length);
+            foreach (var item in input)
+            {
+                _elements.Add(item);
+            }
+        }
+
+        public ListInput(ImmutableArray<Input>.Builder array)
+        {
+            _elements = array.MoveToImmutable().ToList();
+        }
+        
         public ListInput(params Input[] input)
         {
             _elements = new List<Input>(input.Length);

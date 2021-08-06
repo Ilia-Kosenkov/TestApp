@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 
 [assembly:InternalsVisibleTo("TestApp.Test")]
@@ -18,32 +19,37 @@ namespace TestApp
             {
                 throw new ArgumentException("The input is empty");
             }
+
+            var nElems = 1;
+            foreach (var ch in input)
+            {
+                if (ch == ',')
+                {
+                    nElems++;
+                }
+            }
+
+            if (nElems == 1)
+            {
+                return ParseElementListItem(input);
+            }
+
+            var builder = ImmutableArray.CreateBuilder<Input>(nElems);
             
-            Input? result = null;
             var prev = 0;
             for (var curr = 0; curr < input.Length; curr++)
             {
                 var ch = input[curr];
                 if (ch == ',')
                 {
-                    var temp = ParseElementListItem(input[prev..curr]);
+                    builder.Add(ParseElementListItem(input[prev..curr]));
                     prev = curr + 1;
-                    result = result switch
-                    {
-                        ListInput li => li.Add(temp),
-                        null => new ListInput(temp),
-                        not null => throw new InvalidOperationException("Invalid parsing state, should not happen")
-                    };
                 }
             }
 
-            var lastItem = ParseElementListItem(input[prev..]);
-            return result switch
-            {
-                null => lastItem,
-                ListInput li => li.Add(lastItem),
-                _ => throw new InvalidOperationException("Invalid parsing state, should not happen")
-            };
+            builder.Add(ParseElementListItem(input[prev..]));
+
+            return new ListInput(builder);
         }
 
         private Input ParseElementListItem(ReadOnlySpan<char> input)
