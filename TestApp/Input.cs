@@ -98,48 +98,32 @@ namespace TestApp
 
     internal record ListInput : Input
     {
-        private readonly List<Input> _elements;
-
-        public IReadOnlyCollection<Input> Items => _elements;
+        public ImmutableArray<Input> Items { get; }
 
         public ListInput(ReadOnlySpan<Input> input)
         {
-            _elements = new List<Input>(input.Length);
+            var builder = ImmutableArray.CreateBuilder<Input>(input.Length);
             foreach (var item in input)
             {
-                _elements.Add(item);
+                builder.Add(item);
             }
+
+            Items = builder.ToImmutable();
         }
 
-        public ListInput(ImmutableArray<Input>.Builder array)
-        {
-            _elements = array.MoveToImmutable().ToList();
-        }
-        
-        public ListInput(params Input[] input)
-        {
-            _elements = new List<Input>(input.Length);
-            foreach (var item in input)
-            {
-                _elements.Add(item);
-            }
-        }
+        public ListInput(ImmutableArray<Input>.Builder array) => Items = array.MoveToImmutable();
 
-        public ListInput(IEnumerable<Input> input) 
-        {
-            _elements = input.ToList();
-        }
+        public ListInput(params Input[] input) => Items = input.ToImmutableArray();
 
-        public ListInput Add(Input i)
+        public ListInput(IEnumerable<Input> input)
         {
-            _elements.Add(i);
-            return this;
+            Items = input.ToImmutableArray();
         }
 
         public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
             valsWritten = 0;
-            foreach (var item in _elements)
+            foreach (var item in Items)
             {
                 if (!item.TryWriteValues(buffer, upperLimit, out var nVals))
                 {
