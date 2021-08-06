@@ -42,6 +42,8 @@ namespace TestApp
                 2 => Parse_HH_mm_ss(input, sepPositions),
                 3 => Parse_HH_mm_ss_fff(input, sepPositions),
                 5 => Parse_yyyy_MM_dd_HH_mm_ss(input, sepPositions),
+                6 when HasMilliseconds(input) => Parse_yyyy_MM_dd_HH_mm_ss_fff(input, sepPositions),
+                6 => Parse_yyyy_MM_dd_w_HH_mm_ss(input, sepPositions),
                 7 => Parse_yyyy_MM_dd_w_HH_mm_ss_fff(input, sepPositions),
                 _ => throw new NotImplementedException()
             };
@@ -197,13 +199,11 @@ namespace TestApp
                 Seconds = hms.Seconds
             };
         }
-            
-        private ScheduleRep Parse_yyyy_MM_dd_w_HH_mm_ss_fff(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps)
+           
+        private ScheduleRep Parse_yyyy_MM_dd_w_HH_mm_ss(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps)
         {
             var ymd = Parse_yyyy_MM_dd(@string[..seps[3]], seps[..4]);
-            var hmsm = Parse_HH_mm_ss_fff(@string, seps[4..]);
-
-            return hmsm with
+            return Parse_HH_mm_ss(@string, seps[4..]) with
             {
                 Years = ymd.Years,
                 Months = ymd.Months,
@@ -211,6 +211,47 @@ namespace TestApp
                 
                 WeekDays = ParseElement(@string[(seps[3] + 1)..seps[4]])
             };
+        }
+        
+        private ScheduleRep Parse_yyyy_MM_dd_HH_mm_ss_fff(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps)
+        {
+            var ymd = Parse_yyyy_MM_dd(@string[..seps[3]], seps[..4]);
+            return Parse_HH_mm_ss_fff(@string, seps[3..]) with
+            {
+                Years = ymd.Years,
+                Months = ymd.Months,
+                Days = ymd.Days
+            };
+        }
+        
+        private ScheduleRep Parse_yyyy_MM_dd_w_HH_mm_ss_fff(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps)
+        {
+            var ymd = Parse_yyyy_MM_dd(@string[..seps[3]], seps[..4]);
+            return Parse_HH_mm_ss_fff(@string, seps[4..]) with
+            {
+                Years = ymd.Years,
+                Months = ymd.Months,
+                Days = ymd.Days,
+                
+                WeekDays = ParseElement(@string[(seps[3] + 1)..seps[4]])
+            };
+        }
+
+        private static bool HasMilliseconds(ReadOnlySpan<char> input)
+        {
+            for (var i = input.Length - 1; i >= 0; i--)
+            {
+                var ch = input[i];
+                switch (ch)
+                {
+                    case '.':
+                        return true;
+                    case ':':
+                        return false;
+                }
+            }
+
+            throw new ArgumentException("Invalid input string");
         }
     }
 }

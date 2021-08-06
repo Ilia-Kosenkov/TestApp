@@ -31,6 +31,8 @@ namespace TestApp.Test
         [DataRow("10:20:30")]
         [DataRow("10:20:30.450")]
         [DataRow("2021.11.05 10:20:30")]
+        [DataRow("2021.11.05 10:20:30.420")]
+        [DataRow("2021.11.05 0 10:20:30")]
         [DataRow("2021.11.05 3 10:20:30.998,999,005")]
         public void TestWholeStringParsing(string rep)
         {
