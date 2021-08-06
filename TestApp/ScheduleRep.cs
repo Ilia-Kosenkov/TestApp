@@ -1,4 +1,6 @@
-﻿#nullable enable
+﻿using System.Text;
+
+#nullable enable
 
 namespace TestApp
 {
@@ -15,5 +17,8 @@ namespace TestApp
         public Input Seconds { get; init; } = AnyInput.Any;
 
         public Input Milliseconds { get; init; } = AnyInput.Any;
+
+        public override string ToString() =>
+            $"{Years}.{Months}.{Days} {WeekDays} {Hours}:{Minutes}:{Seconds}.{Milliseconds}";
     }
 }

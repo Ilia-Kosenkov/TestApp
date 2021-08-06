@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text;
 
 #nullable enable
 namespace TestApp
@@ -24,6 +25,8 @@ namespace TestApp
             valsWritten = 0;
             return false;
         }
+
+        public override string ToString() => Value.ToString();
     }
 
     internal abstract record RangeInput : Input {}
@@ -31,6 +34,7 @@ namespace TestApp
     internal record AnyInput : RangeInput
     {
         public static AnyInput Any { get; } = new();
+
         public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
             if (buffer.Length >= upperLimit)
@@ -47,6 +51,8 @@ namespace TestApp
             valsWritten = 0;
             return false;
         }
+
+        public override string ToString() => "*";
     }
     internal record ValueRangeInput(ushort LowerLimit, uint UpperLimit) : RangeInput
     {
@@ -66,6 +72,8 @@ namespace TestApp
             valsWritten = 0;
             return false;
         }
+
+        public override string ToString() => $"{LowerLimit}-{UpperLimit}";
     }
 
     internal record StepByInput(RangeInput ValueRange, ushort StepBy) : Input
@@ -95,6 +103,8 @@ namespace TestApp
 
             return false;
         }
+
+        public override string ToString() => $"{ValueRange}/{StepBy}";
     }
 
     internal record ListInput : Input
@@ -136,6 +146,15 @@ namespace TestApp
             }
 
             return true;
+        }
+
+        public override string ToString()
+        {
+            var builder = new StringBuilder(Items.Length * 4);
+
+            builder.AppendJoin(',', Items);
+            
+            return builder.ToString();
         }
     }
 }
