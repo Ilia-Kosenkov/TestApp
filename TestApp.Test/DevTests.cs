@@ -29,6 +29,7 @@ namespace TestApp.Test
         
         [DataTestMethod]
         [DataRow("10:20:30")]
+        [DataRow("10:20:30.450")]
         public void TestWholeStringParsing(string rep)
         {
             var parser = new InputParser();

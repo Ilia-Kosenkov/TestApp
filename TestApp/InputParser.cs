@@ -37,11 +37,15 @@ namespace TestApp
             sepPositions = sepPositions.Slice(0, sepCount + 1);
 
             // Match with the number of actually found separators
-            return (sepCount - 1) switch
+            var result =  (sepCount - 1) switch
             {
                 2 => Parse_HH_mm_ss(input, sepPositions),
                 _ => throw new NotImplementedException()
             };
+
+            result.Validate();
+
+            return result;
         }
         
         public Input ParseElement(ReadOnlySpan<char> input)

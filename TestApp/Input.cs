@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Text;
 
 #nullable enable
@@ -10,6 +9,8 @@ namespace TestApp
     internal abstract record Input
     {
         public abstract bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten);
+
+        public abstract void Validate(ushort lowerLimit, ushort upperLimit);
     }
 
     internal record SingularInput(ushort Value) : Input
@@ -26,11 +27,19 @@ namespace TestApp
             return false;
         }
 
+        public override void Validate(ushort lowerLimit, ushort upperLimit)
+        {
+            if (Value < lowerLimit || Value > upperLimit)
+            {
+                throw new ValidationException(typeof(SingularInput), Value, lowerLimit, upperLimit);
+            }
+        }
+
         public override string ToString() => Value.ToString();
     }
 
-    internal abstract record RangeInput : Input {}
-    
+    internal abstract record RangeInput : Input;
+
     internal record AnyInput : RangeInput
     {
         public static AnyInput Any { get; } = new();
@@ -53,8 +62,13 @@ namespace TestApp
         }
 
         public override string ToString() => "*";
+
+        public override void Validate(ushort lowerLimit, ushort upperLimit)
+        {
+            // This range is always valid
+        }
     }
-    internal record ValueRangeInput(ushort LowerLimit, uint UpperLimit) : RangeInput
+    internal record ValueRangeInput(ushort LowerLimit, ushort UpperLimit) : RangeInput
     {
         public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
@@ -62,15 +76,28 @@ namespace TestApp
             {
                 for(var i = LowerLimit; i <= UpperLimit; i++)
                 {
-                    buffer[(i - LowerLimit)] = i;
+                    buffer[i - LowerLimit] = i;
                 }
 
-                valsWritten = UpperLimit - LowerLimit + 1u;
+                valsWritten = (uint)(UpperLimit - LowerLimit + 1);
                 return true;
             }
 
             valsWritten = 0;
             return false;
+        }
+
+        public override void Validate(ushort lowerLimit, ushort upperLimit)
+        {
+            if (LowerLimit < lowerLimit)
+            {
+                throw new ValidationException(typeof(ValueRangeInput), LowerLimit, lowerLimit, upperLimit);
+            }
+            
+            if(UpperLimit > upperLimit)
+            {
+                throw new ValidationException(typeof(ValueRangeInput), UpperLimit, lowerLimit, upperLimit);
+            }
         }
 
         public override string ToString() => $"{LowerLimit}-{UpperLimit}";
@@ -102,6 +129,22 @@ namespace TestApp
             }
 
             return false;
+        }
+
+        public override void Validate(ushort lowerLimit, ushort upperLimit)
+        {
+            // Valid if inner range is valid
+            try
+            {
+                ValueRange.Validate(lowerLimit, upperLimit);
+            }
+            catch (ValidationException vex)
+            {
+                // Modify exception type
+                throw new ValidationException(
+                    typeof(StepByInput), vex.Value, vex.TestedLowerLimit, vex.TestedUpperLimit
+                );
+            }
         }
 
         public override string ToString() => $"{ValueRange}/{StepBy}";
@@ -146,6 +189,21 @@ namespace TestApp
             }
 
             return true;
+        }
+
+        public override void Validate(ushort lowerLimit, ushort upperLimit)
+        {
+            try
+            {
+                foreach (var item in Items)
+                {
+                    item.Validate(lowerLimit, upperLimit);
+                }
+            }
+            catch (ValidationException vex)
+            {
+                throw new ValidationException(typeof(ListInput), vex.Value, vex.TestedLowerLimit, vex.TestedUpperLimit);
+            }
         }
 
         public override string ToString()
