@@ -26,19 +26,14 @@ namespace TestApp.Test
             Assert.IsTrue(parsedValue.AsSpan().SequenceEqual(buff.Slice(0, (int)nWritten)));
         }
 
-        ///     HH:mm:ss
-        ///     HH:mm:ss.fff
-        ///     yyyy.MM.dd HH:mm:ss
-        ///     yyyy.MM.dd HH:mm:ss.fff
-        ///     yyyy.MM.dd w HH:mm:ss
-        ///     yyyy.MM.dd w HH:mm:ss.fff
+        
         [DataTestMethod]
-        [DataRow("10:20:30.450")]
+        [DataRow("10:20:30")]
         public void TestWholeStringParsing(string rep)
         {
             var parser = new InputParser();
 
-            parser.Parse(rep);
+            var result = parser.Parse(rep);
         }
     }
 }

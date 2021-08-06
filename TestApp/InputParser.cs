@@ -8,9 +8,40 @@ namespace TestApp
 {
     internal class InputParser
     {
+        ///     HH:mm:ss                       2
+        ///     HH:mm:ss.fff                   3
+        ///     yyyy.MM.dd HH:mm:ss            5
+        ///     yyyy.MM.dd HH:mm:ss.fff        6
+        ///     yyyy.MM.dd w HH:mm:ss          6
+        ///     yyyy.MM.dd w HH:mm:ss.fff      7
         public ScheduleRep Parse(ReadOnlySpan<char> input)
         {
-            throw new NotImplementedException();
+            input = input.Trim();
+            Span<int> sepPositions = stackalloc int[9]; // 7 from the input plus lower and upper limit
+            sepPositions[0] = -1;
+            var sepCount = 1;
+
+            for (var i = 0; i < input.Length; i++)
+            {
+                if (input[i] is '.' or ':' or ' ')
+                {
+                    if (sepCount == 8)
+                    {
+                        throw new ArgumentException("Too many separators ('.', ':' or ' ') in the string");
+                    }
+                    sepPositions[sepCount++] = i;
+                }
+            }
+
+            sepPositions[sepCount] = input.Length;
+            sepPositions = sepPositions.Slice(0, sepCount + 1);
+
+            // Match with the number of actually found separators
+            return (sepCount - 1) switch
+            {
+                2 => Parse_HH_mm_ss(input, sepPositions),
+                _ => throw new NotImplementedException()
+            };
         }
         
         public Input ParseElement(ReadOnlySpan<char> input)
@@ -124,5 +155,13 @@ namespace TestApp
             
             throw new ArgumentException();
         }
+
+        private ScheduleRep Parse_HH_mm_ss(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps) =>
+            new ScheduleRep()
+            {
+                Hours = ParseElement(@string[(seps[0] + 1)..seps[1]]),
+                Minutes = ParseElement(@string[(seps[1] + 1)..seps[2]]),
+                Seconds = ParseElement(@string[(seps[2] + 1)..seps[3]])
+            };
     }
 }
