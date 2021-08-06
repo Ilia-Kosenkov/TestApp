@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text;
@@ -8,27 +9,15 @@ namespace TestApp
 {
     public abstract record Input
     {
-        public abstract bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten);
-
         public abstract void Validate(ushort lowerLimit, ushort upperLimit);
 
         public abstract string ToString(int precision, ushort lowerLimit, ushort upperLimit);
+
+        public abstract void SetBits(BitArray array, int offset, ushort lowerLimit, ushort upperLimit);
     }
 
     internal record SingularInput(ushort Value) : Input
     {
-        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
-        {
-            if (buffer.Length > 1)
-            {
-                buffer[0] = Value;
-                valsWritten = 1;
-                return true;
-            }
-            valsWritten = 0;
-            return false;
-        }
-
         public override void Validate(ushort lowerLimit, ushort upperLimit)
         {
             if (Value < lowerLimit || Value > upperLimit)
@@ -38,6 +27,10 @@ namespace TestApp
         }
 
         public override string ToString(int precision, ushort lowerLimit, ushort upperLimit) => Value.ToString($"D{precision}");
+        public override void SetBits(BitArray array, int offset, ushort lowerLimit, ushort upperLimit)
+        {
+            array.Set(offset + Value - lowerLimit, true);
+        }
 
         public override string ToString() => Value.ToString();
     }
@@ -47,23 +40,6 @@ namespace TestApp
     internal record AnyInput : RangeInput
     {
         public static AnyInput Any { get; } = new();
-
-        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
-        {
-            if (buffer.Length >= upperLimit)
-            {
-                for (ushort i = 0; i <= upperLimit; i++)
-                {
-                    buffer[i] = i;
-                }
-
-                valsWritten = upperLimit + 1u;
-                return true;
-            }
-
-            valsWritten = 0;
-            return false;
-        }
 
         public override string ToString() => "*";
 
@@ -87,25 +63,17 @@ namespace TestApp
             
             return builder.ToString();
         }
+
+        public override void SetBits(BitArray array, int offset, ushort lowerLimit, ushort upperLimit)
+        {
+            for (var i = 0; i <= upperLimit - lowerLimit; i++)
+            {
+                array.Set(offset + i, true);
+            }
+        }
     }
     internal record ValueRangeInput(ushort LowerLimit, ushort UpperLimit) : RangeInput
     {
-        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
-        {
-            if (buffer.Length >= UpperLimit - LowerLimit)
-            {
-                for(var i = LowerLimit; i <= UpperLimit; i++)
-                {
-                    buffer[i - LowerLimit] = i;
-                }
-
-                valsWritten = (uint)(UpperLimit - LowerLimit + 1);
-                return true;
-            }
-
-            valsWritten = 0;
-            return false;
-        }
 
         public override void Validate(ushort lowerLimit, ushort upperLimit)
         {
@@ -136,37 +104,19 @@ namespace TestApp
             return builder.ToString();
         }
 
+        public override void SetBits(BitArray array, int offset, ushort lowerLimit, ushort upperLimit)
+        {
+            for (var i = LowerLimit; i <= UpperLimit; i++)
+            {
+                array.Set(offset + i - lowerLimit, true);
+            }
+        }
+
         public override string ToString() => $"{LowerLimit}-{UpperLimit}";
     }
 
     internal record StepByInput(RangeInput ValueRange, ushort StepBy) : Input
     {
-        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
-        {
-            valsWritten = 0;
-            (ushort from, ushort to) = ValueRange switch
-            {
-                AnyInput => (default, upperLimit),
-                ValueRangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, rhs),
-                _ => (default(ushort), default(ushort))
-            };
-
-            if (buffer.Length >= (to - from) / StepBy)
-            {
-                var val = from;
-                var i = 0;
-                for(; val <= to; val += StepBy, i++)
-                {
-                    buffer[i] = val;
-                }
-
-                valsWritten = (uint)i;
-                return true;
-            }
-
-            return false;
-        }
-
         public override void Validate(ushort lowerLimit, ushort upperLimit)
         {
             // Valid if inner range is valid
@@ -206,6 +156,21 @@ namespace TestApp
             return builder.ToString();
         }
 
+        public override void SetBits(BitArray array, int offset, ushort lowerLimit, ushort upperLimit)
+        {
+            (ushort from, ushort to) = ValueRange switch
+            {
+                AnyInput => (lowerLimit, upperLimit),
+                ValueRangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, rhs),
+                _ => throw new NotSupportedException()
+            };
+            for (var i = from; i <= to; i += StepBy)
+            {
+                array.Set(offset + i - lowerLimit, true);
+            }
+            
+        }
+
         public override string ToString() => $"{ValueRange}/{StepBy}";
     }
 
@@ -231,23 +196,6 @@ namespace TestApp
         public ListInput(IEnumerable<Input> input)
         {
             Items = input.ToImmutableArray();
-        }
-
-        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
-        {
-            valsWritten = 0;
-            foreach (var item in Items)
-            {
-                if (!item.TryWriteValues(buffer, upperLimit, out var nVals))
-                {
-                    return false;
-                }
-
-                buffer = buffer.Slice((int)nVals);
-                valsWritten += nVals;
-            }
-
-            return true;
         }
 
         public override void Validate(ushort lowerLimit, ushort upperLimit)
@@ -279,6 +227,14 @@ namespace TestApp
             }
 
             return builder.ToString();
+        }
+
+        public override void SetBits(BitArray array, int offset, ushort lowerLimit, ushort upperLimit)
+        {
+            foreach (var item in Items)
+            {
+                item.SetBits(array, offset, lowerLimit, upperLimit);
+            }
         }
 
         public override string ToString()
