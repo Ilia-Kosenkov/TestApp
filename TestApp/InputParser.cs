@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 [assembly:InternalsVisibleTo("TestApp.Test")]
 namespace TestApp
 {
-    internal class InputParser
+    internal class InputParser : IParser
     {
         ///     HH:mm:ss                       2
         ///     HH:mm:ss.fff                   3

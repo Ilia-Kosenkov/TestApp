@@ -6,7 +6,7 @@ using System.Text;
 #nullable enable
 namespace TestApp
 {
-    internal abstract record Input
+    public abstract record Input
     {
         public abstract bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten);
 

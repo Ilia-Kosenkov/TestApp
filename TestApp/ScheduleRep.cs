@@ -1,11 +1,10 @@
-﻿using System;
+﻿#nullable enable
 using System.Text;
 
-#nullable enable
 
 namespace TestApp
 {
-    internal record ScheduleRep()
+    public record ScheduleRep
     {
         public Input Years { get; init; } = AnyInput.Any;
         public Input Months { get; init; } = AnyInput.Any;
