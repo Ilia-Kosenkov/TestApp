@@ -88,7 +88,7 @@ namespace TestApp
             {
                 if (input[0] is '*' && stepPos == 1)
                 {
-                    result = new AnyInput();
+                    result = AnyInput.Any;
                 }
                 else
                 {

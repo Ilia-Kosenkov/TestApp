@@ -30,6 +30,7 @@ namespace TestApp
     
     internal record AnyInput : RangeInput
     {
+        public static AnyInput Any { get; } = new();
         public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
             if (buffer.Length >= upperLimit)
