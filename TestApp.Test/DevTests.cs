@@ -30,6 +30,8 @@ namespace TestApp.Test
         [DataTestMethod]
         [DataRow("10:20:30")]
         [DataRow("10:20:30.450")]
+        [DataRow("2021.11.05 10:20:30")]
+        [DataRow("2021.11.05 3 10:20:30.998,999,005")]
         public void TestWholeStringParsing(string rep)
         {
             var parser = new InputParser();

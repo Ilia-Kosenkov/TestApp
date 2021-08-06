@@ -40,6 +40,9 @@ namespace TestApp
             var result =  (sepCount - 1) switch
             {
                 2 => Parse_HH_mm_ss(input, sepPositions),
+                3 => Parse_HH_mm_ss_fff(input, sepPositions),
+                5 => Parse_yyyy_MM_dd_HH_mm_ss(input, sepPositions),
+                7 => Parse_yyyy_MM_dd_w_HH_mm_ss_fff(input, sepPositions),
                 _ => throw new NotImplementedException()
             };
 
@@ -161,11 +164,53 @@ namespace TestApp
         }
 
         private ScheduleRep Parse_HH_mm_ss(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps) =>
-            new ScheduleRep()
+            new()
             {
                 Hours = ParseElement(@string[(seps[0] + 1)..seps[1]]),
                 Minutes = ParseElement(@string[(seps[1] + 1)..seps[2]]),
                 Seconds = ParseElement(@string[(seps[2] + 1)..seps[3]])
             };
+
+        private ScheduleRep Parse_HH_mm_ss_fff(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps) =>
+            Parse_HH_mm_ss(@string[..seps[3]], seps[..4]) with
+            {
+                Milliseconds = ParseElement(@string[(seps[3] + 1)..seps[4]])
+            };
+        
+        private ScheduleRep Parse_yyyy_MM_dd(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps) =>
+            new()
+            {
+                Years = ParseElement(@string[(seps[0] + 1)..seps[1]]),
+                Months = ParseElement(@string[(seps[1] + 1)..seps[2]]),
+                Days = ParseElement(@string[(seps[2] + 1)..seps[3]])
+            };
+
+        private ScheduleRep Parse_yyyy_MM_dd_HH_mm_ss(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps)
+        {
+            var ymd = Parse_yyyy_MM_dd(@string[..seps[3]], seps[..4]);
+            var hms = Parse_HH_mm_ss(@string, seps[3..]);
+
+            return ymd with
+            {
+                Hours = hms.Hours,
+                Minutes = hms.Minutes,
+                Seconds = hms.Seconds
+            };
+        }
+            
+        private ScheduleRep Parse_yyyy_MM_dd_w_HH_mm_ss_fff(ReadOnlySpan<char> @string, ReadOnlySpan<int> seps)
+        {
+            var ymd = Parse_yyyy_MM_dd(@string[..seps[3]], seps[..4]);
+            var hmsm = Parse_HH_mm_ss_fff(@string, seps[4..]);
+
+            return hmsm with
+            {
+                Years = ymd.Years,
+                Months = ymd.Months,
+                Days = ymd.Days,
+                
+                WeekDays = ParseElement(@string[(seps[3] + 1)..seps[4]])
+            };
+        }
     }
 }
