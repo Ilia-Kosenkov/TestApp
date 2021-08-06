@@ -17,13 +17,13 @@ namespace TestApp.Test
         {
             var parser = new InputParser();
 
-            var buff = new ushort [512];
+            Span<ushort> buff = stackalloc ushort[128];
             
-            var result = parser.Parse(strRep);
+            var result = parser.ParseElement(strRep);
 
             Assert.IsTrue(result.TryWriteValues(buff, (ushort)limit, out var nWritten));
             Assert.AreEqual(parsedValue.Length, (int)nWritten);
-            Assert.IsTrue(parsedValue.AsSpan().SequenceEqual(buff.AsSpan(0, (int)nWritten)));
+            Assert.IsTrue(parsedValue.AsSpan().SequenceEqual(buff.Slice(0, (int)nWritten)));
         }
     }
 }

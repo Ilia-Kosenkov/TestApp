@@ -10,7 +10,24 @@ namespace TestApp
         public abstract bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten);
     }
 
-    internal record AnyInput : Input
+    internal record SingularInput(ushort Value) : Input
+    {
+        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
+        {
+            if (buffer.Length > 1)
+            {
+                buffer[0] = Value;
+                valsWritten = 1;
+                return true;
+            }
+            valsWritten = 0;
+            return false;
+        }
+    }
+
+    internal abstract record RangeInput : Input {}
+    
+    internal record AnyInput : RangeInput
     {
         public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
@@ -29,23 +46,7 @@ namespace TestApp
             return false;
         }
     }
-
-    internal record SingularInput(ushort Value) : Input
-    {
-        public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
-        {
-            if (buffer.Length > 1)
-            {
-                buffer[0] = Value;
-                valsWritten = 1;
-                return true;
-            }
-            valsWritten = 0;
-            return false;
-        }
-    }
-
-    internal record RangeInput(ushort LowerLimit, uint UpperLimit) : Input
+    internal record ValueRangeInput(ushort LowerLimit, uint UpperLimit) : RangeInput
     {
         public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
@@ -65,7 +66,7 @@ namespace TestApp
         }
     }
 
-    internal record StepByInput(Input ValueRange, ushort StepBy) : Input
+    internal record StepByInput(RangeInput ValueRange, ushort StepBy) : Input
     {
         public override bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten)
         {
@@ -73,7 +74,7 @@ namespace TestApp
             (ushort from, ushort to) = ValueRange switch
             {
                 AnyInput => (default, upperLimit),
-                RangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, (ushort)(rhs + 1)),
+                ValueRangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, (ushort)(rhs + 1)),
                 _ => (default(ushort), default(ushort))
             };
 

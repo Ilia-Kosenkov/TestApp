@@ -7,8 +7,18 @@ namespace TestApp
 {
     internal class InputParser
     {
-        public Input Parse(ReadOnlySpan<char> input)
+        public void Parse(ReadOnlySpan<char> input)
         {
+            
+        }
+        
+        public Input ParseElement(ReadOnlySpan<char> input)
+        {
+            if (input.IsEmpty)
+            {
+                throw new ArgumentException("The input is empty");
+            }
+            
             Input? result = null;
             var prev = 0;
             for (var curr = 0; curr < input.Length; curr++)
@@ -16,31 +26,31 @@ namespace TestApp
                 var ch = input[curr];
                 if (ch == ',')
                 {
-                    var temp = ParseListItem(input[prev..curr]);
+                    var temp = ParseElementListItem(input[prev..curr]);
                     prev = curr + 1;
                     result = result switch
                     {
                         ListInput li => li.Add(temp),
                         null => new ListInput(temp),
-                        not null => throw new InvalidOperationException()
+                        not null => throw new InvalidOperationException("Invalid parsing state, should not happen")
                     };
                 }
             }
 
-            var lastItem = ParseListItem(input[prev..]);
+            var lastItem = ParseElementListItem(input[prev..]);
             return result switch
             {
                 null => lastItem,
                 ListInput li => li.Add(lastItem),
-                _ => throw new InvalidOperationException()
+                _ => throw new InvalidOperationException("Invalid parsing state, should not happen")
             };
         }
 
-        private Input ParseListItem(ReadOnlySpan<char> input)
+        private Input ParseElementListItem(ReadOnlySpan<char> input)
         {
             if (input.IsEmpty)
             {
-                throw new ArgumentException();
+                throw new ArgumentException("The input is empty");
             }
 
             var rngPos = -1;
@@ -59,9 +69,28 @@ namespace TestApp
                 }
             }
 
-            Input? result;
+            // Handles single value input, like `42`
+            if (rngPos == -1 && stepPos == input.Length && ushort.TryParse(input[..stepPos], out var val))
+            {
+                return new SingularInput(val);
+            }
             
-            if (rngPos != -1)
+            RangeInput? result;
+            
+            // Handles 'any' input, like `*` and `*/123`
+            if (rngPos == -1)
+            {
+                if (input[0] is '*' && stepPos == 1)
+                {
+                    result = new AnyInput();
+                }
+                else
+                {
+                    throw new ArgumentException("Failed to parse '*' range");
+                }
+            }
+            // Handles a case of range, e.g. `5-10` or `5-10/2`
+            else
             {
                 if (
                     ushort.TryParse(input[..rngPos], out var lhs) &&
@@ -69,26 +98,11 @@ namespace TestApp
                     lhs <= rhs
                 )
                 {
-                    result = new RangeInput(lhs, rhs);
+                    result = new ValueRangeInput(lhs, rhs);
                 }
                 else
                 {
-                    throw new ArgumentException();
-                }
-            }
-            else if (input[0] is '*' && stepPos == 1)
-            {
-                result = new AnyInput();
-            }
-            else
-            {
-                if (ushort.TryParse(input[..stepPos], out var val))
-                {
-                    result = new SingularInput(val);
-                }
-                else
-                {
-                    throw new ArgumentException();
+                    throw new ArgumentException("Failed to parse 'x-y' range");
                 }
             }
 
@@ -97,7 +111,7 @@ namespace TestApp
                 return result;
             }
 
-            if (stepPos is var _ && ushort.TryParse(input[(stepPos + 1)..], out var stepBy) && stepBy > 0)
+            if (stepPos < input.Length && ushort.TryParse(input[(stepPos + 1)..], out var stepBy) && stepBy > 0)
             {
                 return new StepByInput(result, stepBy);
             }
