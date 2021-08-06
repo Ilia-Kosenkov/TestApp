@@ -53,7 +53,7 @@ namespace TestApp
             return result;
         }
         
-        public Input ParseElement(ReadOnlySpan<char> input)
+        internal Input ParseElement(ReadOnlySpan<char> input)
         {
             if (input.IsEmpty)
             {

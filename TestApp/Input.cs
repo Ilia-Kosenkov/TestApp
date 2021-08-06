@@ -11,6 +11,8 @@ namespace TestApp
         public abstract bool TryWriteValues(Span<ushort> buffer, ushort upperLimit, out uint valsWritten);
 
         public abstract void Validate(ushort lowerLimit, ushort upperLimit);
+
+        public abstract string ToString(int precision, ushort lowerLimit, ushort upperLimit);
     }
 
     internal record SingularInput(ushort Value) : Input
@@ -35,6 +37,8 @@ namespace TestApp
             }
         }
 
+        public override string ToString(int precision, ushort lowerLimit, ushort upperLimit) => Value.ToString($"D{precision}");
+
         public override string ToString() => Value.ToString();
     }
 
@@ -48,12 +52,12 @@ namespace TestApp
         {
             if (buffer.Length >= upperLimit)
             {
-                for (ushort i = 0; i < upperLimit; i++)
+                for (ushort i = 0; i <= upperLimit; i++)
                 {
                     buffer[i] = i;
                 }
 
-                valsWritten = upperLimit;
+                valsWritten = upperLimit + 1u;
                 return true;
             }
 
@@ -66,6 +70,22 @@ namespace TestApp
         public override void Validate(ushort lowerLimit, ushort upperLimit)
         {
             // This range is always valid
+        }
+
+        public override string ToString(int precision, ushort lowerLimit, ushort upperLimit)
+        {
+            var fmt = $"D{precision}";
+            var builder = new StringBuilder((upperLimit - lowerLimit) * (precision + 2))
+                .Append(lowerLimit.ToString(fmt));
+
+            
+            for (var i = lowerLimit + 1u; i <= upperLimit; i++)
+            {
+                builder.Append(',');
+                builder.Append(i.ToString(fmt));
+            }
+            
+            return builder.ToString();
         }
     }
     internal record ValueRangeInput(ushort LowerLimit, ushort UpperLimit) : RangeInput
@@ -100,6 +120,22 @@ namespace TestApp
             }
         }
 
+        public override string ToString(int precision, ushort lowerLimit, ushort upperLimit)
+        {
+            var fmt = $"D{precision}";
+            var builder = new StringBuilder((UpperLimit - LowerLimit) * (precision + 2))
+                .Append(LowerLimit.ToString(fmt));
+
+            
+            for (var i = LowerLimit + 1u; i <= UpperLimit; i++)
+            {
+                builder.Append(',');
+                builder.Append(i.ToString(fmt));
+            }
+            
+            return builder.ToString();
+        }
+
         public override string ToString() => $"{LowerLimit}-{UpperLimit}";
     }
 
@@ -111,15 +147,15 @@ namespace TestApp
             (ushort from, ushort to) = ValueRange switch
             {
                 AnyInput => (default, upperLimit),
-                ValueRangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, (ushort)(rhs + 1)),
+                ValueRangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, rhs),
                 _ => (default(ushort), default(ushort))
             };
 
-            if (buffer.Length >= (to - from - 1) / StepBy)
+            if (buffer.Length >= (to - from) / StepBy)
             {
                 var val = from;
                 var i = 0;
-                for(; val < to; val += StepBy, i++)
+                for(; val <= to; val += StepBy, i++)
                 {
                     buffer[i] = val;
                 }
@@ -145,6 +181,29 @@ namespace TestApp
                     typeof(StepByInput), vex.Value, vex.TestedLowerLimit, vex.TestedUpperLimit
                 );
             }
+        }
+
+        public override string ToString(int precision, ushort lowerLimit, ushort upperLimit)
+        {
+            (ushort from, ushort to) = ValueRange switch
+            {
+                AnyInput => (lowerLimit, upperLimit),
+                ValueRangeInput {LowerLimit : var lhs, UpperLimit : var rhs} => (lhs, rhs),
+                _ => throw new NotSupportedException()
+            };
+
+            var fmt = $"D{precision}";
+            
+            var builder = new StringBuilder((to - from) / StepBy * (precision + 2)).Append(from.ToString(fmt));
+            var val = from + StepBy;
+            for(; val <= to; val += StepBy)
+            {
+                builder.Append(',');
+                builder.Append(val.ToString(fmt));
+            }
+
+
+            return builder.ToString();
         }
 
         public override string ToString() => $"{ValueRange}/{StepBy}";
@@ -204,6 +263,22 @@ namespace TestApp
             {
                 throw new ValidationException(typeof(ListInput), vex.Value, vex.TestedLowerLimit, vex.TestedUpperLimit);
             }
+        }
+
+        public override string ToString(int precision, ushort lowerLimit, ushort upperLimit)
+        {
+            var builder = new StringBuilder(Items.Length * (precision + 10));
+            if (Items.Length > 0)
+            {
+                builder.Append(Items[0].ToString(precision, lowerLimit, upperLimit));
+                for (var i = 1; i < Items.Length; i++)
+                {
+                    builder.Append(',');
+                    builder.Append(Items[i].ToString(precision, lowerLimit, upperLimit));
+                }
+            }
+
+            return builder.ToString();
         }
 
         public override string ToString()
