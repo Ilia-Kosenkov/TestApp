@@ -8,9 +8,9 @@ namespace TestApp
 {
     internal class InputParser
     {
-        public void Parse(ReadOnlySpan<char> input)
+        public ScheduleRep Parse(ReadOnlySpan<char> input)
         {
-            
+            throw new NotImplementedException();
         }
         
         public Input ParseElement(ReadOnlySpan<char> input)
