@@ -1,5 +1,6 @@
 ﻿#nullable enable
 using System;
+using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace TestApp.Test
@@ -36,8 +37,20 @@ namespace TestApp.Test
         {
             var parser = new InputParser();
 
+            // If it fails, it throws
             var result = parser.Parse(rep);
-            
+        }
+        
+        [DataTestMethod]
+        [DataRow("2021.11.05 10:20:30.420", "2021.11.05 0,1,2,3,4,5,6 10:20:30.420")]
+        [DataRow("2021.11.05 3 */4:20:30.998,999,005", "2021.11.05 3 00,04,08,12,16,20:20:30.998,999,005")]
+        public void TestWholeStringParsingAndExpansion(string rep, string expected)
+        {
+            var parser = new InputParser();
+
+            var result = parser.Parse(rep);
+            var strRep = result.ToString(true);
+            Assert.IsTrue(string.Equals(strRep, expected, StringComparison.Ordinal));
         }
     }
 }
