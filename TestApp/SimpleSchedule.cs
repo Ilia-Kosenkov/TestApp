@@ -129,12 +129,12 @@ namespace TestApp
         /// <returns><c>0</c>-based day if it was found, <c>-1</c> if no scheduled days can be found in this month.</returns>
         private int GetThisOrNextValidDayInMonth(int year, int month, int thisDay)
         {
-            var nDays = DateTime.DaysInMonth(year + Date.YearOffset, month + Date.MonthOffset);
+            var nDays = Date.DaysInMonth((byte)year, (byte)month);
             for (var i = thisDay; i < nDays; i++)
             {
-                var day = new DateTime(year + Date.YearOffset, month + Date.MonthOffset, i + Date.DayOffset);
+                var day = new Date { Year = (byte)year, Month = (byte)month, Day = (byte)i }; 
                 // Match day of week
-                if (!_bitRep.Get(WeekDayOffset + (int)day.DayOfWeek))
+                if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek))
                 {
                     continue;
                 }
