@@ -1,12 +1,10 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
 
-[assembly:InternalsVisibleTo("TestApp.Test")]
 namespace TestApp
 {
-    internal class InputParser : IParser
+    public class InputParser : IParser
     {
         ///     HH:mm:ss                       2
         ///     HH:mm:ss.fff                   3
@@ -45,7 +43,7 @@ namespace TestApp
                 6 when HasMilliseconds(input) => Parse_yyyy_MM_dd_HH_mm_ss_fff(input, sepPositions),
                 6 => Parse_yyyy_MM_dd_w_HH_mm_ss(input, sepPositions),
                 7 => Parse_yyyy_MM_dd_w_HH_mm_ss_fff(input, sepPositions),
-                _ => throw new NotImplementedException()
+                _ => throw new ArgumentException()
             };
 
             result.Validate();
@@ -53,7 +51,7 @@ namespace TestApp
             return result;
         }
         
-        internal Input ParseElement(ReadOnlySpan<char> input)
+        private Input ParseElement(ReadOnlySpan<char> input)
         {
             if (input.IsEmpty)
             {

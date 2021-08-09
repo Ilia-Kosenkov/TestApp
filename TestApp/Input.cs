@@ -16,7 +16,7 @@ namespace TestApp
         public abstract void SetBits(BitArray array, int offset, ushort lowerLimit, ushort upperLimit);
     }
 
-    internal record SingularInput(ushort Value) : Input
+    public record SingularInput(ushort Value) : Input
     {
         public override void Validate(ushort lowerLimit, ushort upperLimit)
         {
@@ -35,9 +35,9 @@ namespace TestApp
         public override string ToString() => Value.ToString();
     }
 
-    internal abstract record RangeInput : Input;
+    public abstract record RangeInput : Input;
 
-    internal record AnyInput : RangeInput
+    public record AnyInput : RangeInput
     {
         public static AnyInput Any { get; } = new();
 
@@ -72,7 +72,8 @@ namespace TestApp
             }
         }
     }
-    internal record ValueRangeInput(ushort LowerLimit, ushort UpperLimit) : RangeInput
+
+    public record ValueRangeInput(ushort LowerLimit, ushort UpperLimit) : RangeInput
     {
 
         public override void Validate(ushort lowerLimit, ushort upperLimit)
@@ -115,7 +116,7 @@ namespace TestApp
         public override string ToString() => $"{LowerLimit}-{UpperLimit}";
     }
 
-    internal record StepByInput(RangeInput ValueRange, ushort StepBy) : Input
+    public record StepByInput(RangeInput ValueRange, ushort StepBy) : Input
     {
         public override void Validate(ushort lowerLimit, ushort upperLimit)
         {
@@ -174,7 +175,7 @@ namespace TestApp
         public override string ToString() => $"{ValueRange}/{StepBy}";
     }
 
-    internal record ListInput : Input
+    public record ListInput : Input
     {
         public ImmutableArray<Input> Items { get; }
 

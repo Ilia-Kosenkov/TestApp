@@ -37,6 +37,5 @@ namespace TestApp
         /// <returns>Предыдущий момент времени в расписании</returns>
         DateTime PrevEvent(DateTime t1);
 
-        bool IsOnSchedule(DateTime t1);
     }
 }

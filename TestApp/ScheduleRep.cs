@@ -18,6 +18,10 @@ namespace TestApp
 
         public Input Milliseconds { get; init; } = AnyInput.Any;
 
+        /// <summary>
+        /// Validates instance of <see cref="TestApp.ScheduleRep"/>.
+        ///  </summary>
+        /// <exception cref="TestApp.ValidationException">Thrown if validation fails.</exception>
         public void Validate()
         {
             Years.Validate(2000, 2100);
