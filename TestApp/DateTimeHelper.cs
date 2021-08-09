@@ -6,19 +6,6 @@ namespace TestApp
 {
     internal static class Helper
     {
-        public static int AsInt(this DayOfWeek dow) =>
-            dow switch
-            {
-                DayOfWeek.Sunday => 0,
-                DayOfWeek.Monday => 1,
-                DayOfWeek.Tuesday => 2,
-                DayOfWeek.Wednesday => 3,
-                DayOfWeek.Thursday => 4,
-                DayOfWeek.Friday => 5,
-                DayOfWeek.Saturday => 6,
-                _ => throw new InvalidOperationException()
-            };
-
         public static void Deconstruct(this DateTime @this, out Date date, out Time time) =>
             (date, time) = (
                 new Date

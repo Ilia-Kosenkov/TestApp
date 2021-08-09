@@ -112,7 +112,7 @@ namespace TestApp
                         _bitRep.Get(DayOffset + @event.Day - Date.DayOffset) || 
                         _bitRep.Get(DayOffset + 31) && @event.Day == DateTime.DaysInMonth(@event.Year, @event.Month)
                     ) && 
-                   _bitRep.Get(WeekDayOffset + @event.DayOfWeek.AsInt()) &&
+                   _bitRep.Get(WeekDayOffset + (int)@event.DayOfWeek) &&
                    _bitRep.Get(HourOffset + @event.Hour) &&
                    _bitRep.Get(MinuteOffset + @event.Minute) &&
                    _bitRep.Get(SecondOffset + @event.Second) &&
@@ -134,7 +134,7 @@ namespace TestApp
             {
                 var day = new DateTime(year + Date.YearOffset, month + Date.MonthOffset, i + Date.DayOffset);
                 // Match day of week
-                if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek.AsInt()))
+                if (!_bitRep.Get(WeekDayOffset + (int)day.DayOfWeek))
                 {
                     continue;
                 }
@@ -154,7 +154,7 @@ namespace TestApp
             {
                 var day = new DateTime(year + Date.YearOffset, month + Date.MonthOffset, i + Date.DayOffset);
                 // Match day of week
-                if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek.AsInt()))
+                if (!_bitRep.Get(WeekDayOffset + (int)day.DayOfWeek))
                 {
                     continue;
                 }
