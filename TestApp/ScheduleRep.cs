@@ -16,7 +16,8 @@ namespace TestApp
         public Input Minutes { get; init; } = AnyInput.Any;
         public Input Seconds { get; init; } = AnyInput.Any;
 
-        public Input Milliseconds { get; init; } = AnyInput.Any;
+        // If not specified explicitly, default to 0 ms rather than `*`
+        public Input Milliseconds { get; init; } = new SingularInput(0);
 
         /// <summary>
         /// Validates instance of <see cref="TestApp.ScheduleRep"/>.

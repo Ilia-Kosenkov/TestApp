@@ -87,7 +87,10 @@ namespace TestApp
         {
             return _bitRep.Get(YearOffset + @event.Year - Date.YearOffset) &&
                    _bitRep.Get(MonthOffset + @event.Month - Date.MonthOffset) &&
-                   _bitRep.Get(DayOffset + @event.Day - Date.DayOffset) && 
+                   (
+                        _bitRep.Get(DayOffset + @event.Day - Date.DayOffset) || 
+                        _bitRep.Get(DayOffset + 31) && @event.Day == DateTime.DaysInMonth(@event.Year, @event.Month)
+                    ) && 
                    _bitRep.Get(WeekDayOffset + @event.DayOfWeek.AsInt()) &&
                    _bitRep.Get(HourOffset + @event.Hour) &&
                    _bitRep.Get(MinuteOffset + @event.Minute) &&
@@ -105,6 +108,8 @@ namespace TestApp
         /// <returns><c>0</c>-based day if it was found, <c>-1</c> if no scheduled days can be found in this month.</returns>
         private int GetThisOrNextValidDayInMonth(int year, int month, int thisDay)
         {
+            var hasLastDayOfMonth = _bitRep.Get(DayOffset + 31);
+            
             var nDays = DateTime.DaysInMonth(year + Date.YearOffset, month + Date.MonthOffset);
             for (var i = thisDay; i < nDays; i++)
             {
@@ -115,7 +120,7 @@ namespace TestApp
                     continue;
                 }
                 // Match exact day or last day of month if 32-d bit is set
-                if (_bitRep.Get(DayOffset + i) || i == nDays && _bitRep.Get(DayOffset + 31))
+                if (_bitRep.Get(DayOffset + i) || ((i + Date.DayOffset) == nDays && _bitRep.Get(DayOffset + 31)))
                 {
                     return i;
                 }
@@ -268,11 +273,9 @@ namespace TestApp
                         : sec
                     ),
                     // Same
-                    Millisecond = (byte) (
-                        hourCarry is 1 || minCarry is 1 || secCarry is 1
+                    Millisecond = hourCarry is 1 || minCarry is 1 || secCarry is 1
                         ? _bitRep.MinValue(MillisecondOffset, BitLength - MillisecondOffset)
                         : mSec
-                    )
                 },
                 // Request for the next day
                 hourCarry == 1
