@@ -148,14 +148,15 @@ namespace TestApp
             return -1;
         }
         
-        private int GetThisOrPrevValidDayInMonth(int year, int month, int thisDay)
+        private int GetThisOrPrevValidDayInMonth(ushort year, ushort month, int thisDay)
         {
-            var nDays = DateTime.DaysInMonth(year + Date.YearOffset, month + Date.MonthOffset);
+            var day = new Date { Year = (byte)year, Month = (byte)month, Day = (byte)thisDay };
+            var nDays = day.DaysInCurrentMonth;
             for (var i = thisDay; i >= 0; i--)
             {
-                var day = new DateTime(year + Date.YearOffset, month + Date.MonthOffset, i + Date.DayOffset);
+                day = new Date { Year = (byte)year, Month = (byte)month, Day = (byte)i }; 
                 // Match day of week
-                if (!_bitRep.Get(WeekDayOffset + (int)day.DayOfWeek))
+                if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek))
                 {
                     continue;
                 }
