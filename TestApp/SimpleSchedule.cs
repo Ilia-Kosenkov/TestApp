@@ -133,7 +133,7 @@ namespace TestApp
             var nDays = day.DaysInCurrentMonth;
             for (var i = thisDay; i < nDays; i++)
             {
-                day = new Date { Year = (byte)year, Month = (byte)month, Day = (byte)i }; 
+                day = day.WithDay((byte)i); 
                 // Match day of week
                 if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek))
                 {
@@ -154,7 +154,7 @@ namespace TestApp
             var nDays = day.DaysInCurrentMonth;
             for (var i = thisDay; i >= 0; i--)
             {
-                day = new Date { Year = (byte)year, Month = (byte)month, Day = (byte)i }; 
+                day = day.WithDay((byte)i); 
                 // Match day of week
                 if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek))
                 {
@@ -232,7 +232,7 @@ namespace TestApp
             // If month or year are 'carried over', set `day` to `0`.
             var day = year == date.Year && month == date.Month
                 ? date.Day
-                : DateTime.DaysInMonth(year + Date.YearOffset, month + Date.MonthOffset) - 1;
+                : Date.DaysInMonth((byte)year, (byte)month) - 1;
 
             while ((day = GetThisOrPrevValidDayInMonth(year, month, day)) == -1)
             {
@@ -246,10 +246,11 @@ namespace TestApp
                     (year, yCarry) = _bitRep.ThisOrPrevValue(YearOffset, MonthOffset - YearOffset, year - 1);
                     if (yCarry == 1)
                     {
-                        throw new NoNextScheduledSlotException();
+                        throw new NoPreviousScheduledSlotException();
                     }
                 }
-                day = DateTime.DaysInMonth(year + Date.YearOffset, month + Date.MonthOffset) - 1;
+
+                day = Date.DaysInMonth((byte)year, (byte)month) - 1;
             }
 
             return new Date { Year = (byte)year, Month = (byte)month, Day = (byte)day };
