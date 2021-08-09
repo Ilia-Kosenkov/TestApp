@@ -101,6 +101,7 @@ namespace TestApp
         
         public static (ushort Value, byte CarryOver) ThisOrPrevValue(this BitArray array, int offset, int length, int searchFrom)
         {
+            
             for (var i = offset + searchFrom; i >= offset; i--)
             {
                 if (array[i])
@@ -109,6 +110,7 @@ namespace TestApp
                 }
             }
 
+            
             for (var i = offset + searchFrom + 1; i < offset + length; i++)
             {
                 if (array[i])
