@@ -19,9 +19,6 @@ namespace TestApp
         
         private readonly BitArray _bitRep = new(BitLength);
         
-        #if DEBUG
-        private readonly ScheduleRep _debugRep = new ScheduleRep();
-        #endif
         public SimpleSchedule() => _bitRep.SetAll(true);
 
         public SimpleSchedule(ScheduleRep rep)
@@ -36,9 +33,6 @@ namespace TestApp
             rep.Minutes.SetBits(_bitRep, MinuteOffset, 0, 59);
             rep.Seconds.SetBits(_bitRep, SecondOffset, 0, 59);
             rep.Milliseconds.SetBits(_bitRep, MillisecondOffset, 0, 999);
-            #if DEBUG
-            _debugRep = rep;
-            #endif
         }
 
         public DateTime NearestEvent(DateTime t1) => IsOnSchedule(t1) ? t1 : NextEvent(t1);
