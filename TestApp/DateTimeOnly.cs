@@ -71,6 +71,8 @@ namespace TestApp
         public void Deconstruct(out byte year, out byte month, out byte day) =>
             (year, month, day) = (Year, Month, Day);
 
+        public Date WithDay(byte day) => new() { Year = Year, Month = Month, Day = day };
+        
         public override string ToString() => 
             $"{Year + YearOffset:D4}.{Month + MonthOffset:D2}.{Day + DayOffset:D2}";
 
