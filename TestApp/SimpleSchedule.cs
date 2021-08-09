@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections;
+using System.ComponentModel;
 
 namespace TestApp
 {
@@ -18,20 +19,27 @@ namespace TestApp
         private const int BitLength = MillisecondOffset + 1000;
         
         private readonly BitArray _bitRep = new(BitLength);
+        
+        #if DEBUG
+        private readonly ScheduleRep _debugRep = new ScheduleRep();
+        #endif
         public SimpleSchedule() => _bitRep.SetAll(true);
 
         public SimpleSchedule(ScheduleRep rep)
         {
             _ = rep ?? throw new ArgumentNullException(nameof(rep));
             
-            rep.Years.SetBits(_bitRep, YearOffset, 2000, 2100);
-            rep.Months.SetBits(_bitRep, MonthOffset, 1, 12);
-            rep.Days.SetBits(_bitRep, DayOffset, 1, 32);
+            rep.Years.SetBits(_bitRep, YearOffset, Date.YearOffset, 2100);
+            rep.Months.SetBits(_bitRep, MonthOffset, Date.MonthOffset, 12);
+            rep.Days.SetBits(_bitRep, DayOffset, Date.DayOffset, 32);
             rep.WeekDays.SetBits(_bitRep, WeekDayOffset, 0, 6);
             rep.Hours.SetBits(_bitRep, HourOffset, 0, 23);
             rep.Minutes.SetBits(_bitRep, MinuteOffset, 0, 59);
             rep.Seconds.SetBits(_bitRep, SecondOffset, 0, 59);
             rep.Milliseconds.SetBits(_bitRep, MillisecondOffset, 0, 999);
+            #if DEBUG
+            _debugRep = rep;
+            #endif
         }
 
         public DateTime NearestEvent(DateTime t1) => IsOnSchedule(t1) ? t1 : NextEvent(t1);
@@ -40,101 +48,295 @@ namespace TestApp
 
         public DateTime NextEvent(DateTime t1)
         {
-            Span<ushort> inputs = stackalloc ushort[]
-                { (ushort)t1.Year, (ushort)t1.Month, (ushort)t1.Day, (ushort)t1.Hour, (ushort)t1.Minute, (ushort)t1.Second, (ushort)t1.Millisecond };
-            Span<ushort> vals = stackalloc ushort[7];
-            Span<ushort> carryOvers = stackalloc ushort[7];
-            Span<ushort> mins = stackalloc ushort[7];
-
+            var (date, time) = t1.AddMilliseconds(1);
+            // Find scheduled date. Can be this (provided) day.
+            var scheduledDate =  GetThisOrNextScheduledDay(date);
             
-            
-            (vals[6], carryOvers[6], mins[6]) = _bitRep.NextFlag(MillisecondOffset, BitLength - MillisecondOffset, t1.Millisecond + 1);
-            
-            (vals[5], carryOvers[5], mins[5]) = _bitRep.NextFlag(
-                SecondOffset, MillisecondOffset - SecondOffset, t1.Second + carryOvers[6]
-            );
-            (vals[4], carryOvers[4], mins[4]) = _bitRep.NextFlag(MinuteOffset, SecondOffset - MinuteOffset, t1.Minute + carryOvers[5]);
-            (vals[3], carryOvers[3], mins[3]) = _bitRep.NextFlag(HourOffset, MinuteOffset - HourOffset, t1.Hour + carryOvers[4]);
-            
-            
-            // This is suboptimal, should think of something else
-            // This needs a first month/year approximation, then iterate over months/years that match condition, not all month/years
-            var monthIterator = t1.Month - 1;
-            var dayAfter = t1.Day + carryOvers[3];
-            int day;
-            while ((day = GetNextValidDayInMonth(t1.Year + monthIterator / 12, monthIterator % 12 + 1, dayAfter)) == -1)
+            // If input date is not on schedule, then return next scheduled date 
+            // with the first available time slot.
+            if (scheduledDate != date)
             {
-                monthIterator++;
-                dayAfter = 0;
+                return scheduledDate.WithTime(GetFirstTimeSlotInADay());
             }
-
-            vals[2] = (ushort)day;
-            carryOvers[2] = (ushort)(monthIterator != t1.Month ? 1 : 0);
-            mins[2] = (ushort)GetNextValidDayInMonth(t1.Year + monthIterator / 12, monthIterator % 12 + 1, 0);
             
-            (vals[1], carryOvers[1], mins[1]) = _bitRep.NextFlag(MonthOffset, DayOffset - MonthOffset, monthIterator % 12);
-            vals[1] += 1;
-            mins[1] += 1;
-            
-            (vals[0], carryOvers[0], mins[0]) = _bitRep.NextFlag(YearOffset, MonthOffset - YearOffset, t1.Year + monthIterator / 12 + carryOvers[1] - 2000);
-            vals[0] += 2000;
-            mins[0] += 2000;
-
-            mins[2] = (ushort)GetNextValidDayInMonth(vals[0], vals[1], 0);
-            
-            
-            var wasModified = false;
-            for (var i = 0; i < vals.Length; i++)
+            // Search for next time slot
+            var (scheduledTime, nextDay) = GetThisOrNextScheduledTime(time);
+                
+            // Time slot is found within the day
+            if (!nextDay)
             {
-                if (wasModified)
-                {
-                    vals[i] = mins[i];
-                }
-                else
-                {
-                    if (vals[i] != inputs[i])
-                    {
-                        wasModified = true;
-                    }
-                }
+                return scheduledDate.WithTime(scheduledTime);
             }
+            // Otherwise, find next day
+            // (date, _) = t1.AddDays(1);
+            date = new Date { Year = date.Year, Month = date.Month, Day = (byte)(date.Day + 1)};
+            scheduledDate = GetThisOrNextScheduledDay(date);
 
-            return new DateTime(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5], vals[6]);
+            // At this point, `scheduledTime` is the first time slot within a day.
+            // Return next scheduled day with the first time slot.
+            return scheduledDate.WithTime(scheduledTime);
+
+        }
+        
+
+        public DateTime PrevEvent(DateTime t1)
+        {
+            throw new NotImplementedException();
         }
 
-        public DateTime PrevEvent(DateTime t1) => throw new NotImplementedException();
         public bool IsOnSchedule(DateTime @event)
         {
-            return _bitRep.Get(YearOffset + @event.Year - 2000) &&
-                   _bitRep.Get(MonthOffset + @event.Month - 1) &&
-                   _bitRep.Get(DayOffset + @event.Day - 1) && 
+            return _bitRep.Get(YearOffset + @event.Year - Date.YearOffset) &&
+                   _bitRep.Get(MonthOffset + @event.Month - Date.MonthOffset) &&
+                   _bitRep.Get(DayOffset + @event.Day - Date.DayOffset) && 
                    _bitRep.Get(WeekDayOffset + @event.DayOfWeek.AsInt()) &&
                    _bitRep.Get(HourOffset + @event.Hour) &&
                    _bitRep.Get(MinuteOffset + @event.Minute) &&
                    _bitRep.Get(SecondOffset + @event.Second) &&
                    _bitRep.Get(MillisecondOffset + @event.Millisecond);
         }
-
-
-        private int GetNextValidDayInMonth(int year, int month, int nextAfter)
+       
+        /// <summary>
+        /// Finds next scheduled day within a month.
+        /// Takes into account Day of Week and Last Day of Month (32d day) conditions.
+        /// </summary>
+        /// <param name="year"></param>
+        /// <param name="month"></param>
+        /// <param name="thisDay"></param>
+        /// <returns><c>0</c>-based day if it was found, <c>-1</c> if no scheduled days can be found in this month.</returns>
+        private int GetThisOrNextValidDayInMonth(int year, int month, int thisDay)
         {
-            var nDays = DateTime.DaysInMonth(year, month);
-            for (var i = nextAfter + 1; i <= nDays; i++)
+            var nDays = DateTime.DaysInMonth(year + Date.YearOffset, month + Date.MonthOffset);
+            for (var i = thisDay; i < nDays; i++)
             {
-                var day = new DateTime(year, month, i);
+                var day = new DateTime(year + Date.YearOffset, month + Date.MonthOffset, i + Date.DayOffset);
                 // Match day of week
-                if (_bitRep.Get(WeekDayOffset + day.DayOfWeek.AsInt()))
+                if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek.AsInt()))
                 {
-                    // Match exact day or last day of month if 32-d bit is set
-                    if (_bitRep.Get(DayOffset + i - 1) || i == nDays && _bitRep.Get(DayOffset + 31))
-                    {
-                       return i;
-                    }
-
+                    continue;
+                }
+                // Match exact day or last day of month if 32-d bit is set
+                if (_bitRep.Get(DayOffset + i) || i == nDays && _bitRep.Get(DayOffset + 31))
+                {
+                    return i;
                 }
             }
             return -1;
+        }
+        
+        private int GetThisOrPrevValidDayInMonth(int year, int month, int thisDay)
+        {
+            var nDays = DateTime.DaysInMonth(year + Date.YearOffset, month + Date.MonthOffset);
+            for (var i = thisDay; i >= 0; i--)
+            {
+                var day = new DateTime(year + Date.YearOffset, month + Date.MonthOffset, i + Date.DayOffset);
+                // Match day of week
+                if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek.AsInt()))
+                {
+                    continue;
+                }
+                // Match exact day or last day of month if 32-d bit is set
+                if (_bitRep.Get(DayOffset + i) || i == nDays && _bitRep.Get(DayOffset + 31))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Finds next scheduled date (Year/Month/Day), ignoring time.
+        /// Takes into account Day of Week and Last Day of Month (32d day) conditions.
+        /// </summary>
+        /// <param name="date">Date from which the search is performed</param>
+        /// <returns>The next scheduled date. Can be <c>date</c> if it is on schedule.</returns>
+        /// <exception cref="System.InvalidOperationException">Functions called by this method throw if bit representation is invalid (e.g. when no hours are set in the schedule).
+        /// Throwing functions are <see cref="TestApp.Helper.ThisOrNextValue">ThisOrNextValue</see> and <see cref="TestApp.Helper.MinValue">MinValue</see> 
+        /// </exception>
+        /// <exception cref="TestApp.NoNextScheduledSlotException">Thrown if there are no slots available on or after provided <c>date</c>.</exception>
+        private Date GetThisOrNextScheduledDay(Date date)
+        {
+            // This gives the first (year, month) pair to start search from.
+            var (month, mCarry) = _bitRep.ThisOrNextValue(MonthOffset, DayOffset - MonthOffset, date.Month);
+            var (year, yCarry) = _bitRep.ThisOrNextValue(YearOffset, MonthOffset - YearOffset, date.Year + mCarry);
             
+            if (yCarry == 1)
+            {
+                throw new NoNextScheduledSlotException();
+            }
+            
+            // If month or year are 'carried over', set `day` to `0`.
+            var day = (mCarry, yCarry) switch
+            {
+                (0, 0) => date.Day,
+                _ => 0
+            };
+
+            while ((day = GetThisOrNextValidDayInMonth(year, month, day)) == -1)
+            {
+                
+                // Find next month
+                (month, mCarry) = _bitRep.ThisOrNextValue(MonthOffset, DayOffset - MonthOffset, month + 1);
+                // If no valid months are found in this year, `month` is the first valid month in a year,
+                // and next year should be selected
+                if (mCarry == 1)
+                {
+                    (year, yCarry) = _bitRep.ThisOrNextValue(YearOffset, MonthOffset - YearOffset, year + 1);
+                    if (yCarry == 1)
+                    {
+                        throw new NoNextScheduledSlotException();
+                    }
+                }
+                day = 0;
+            }
+
+            return new Date { Year = (byte)year, Month = (byte)month, Day = (byte)day };
+        }
+        
+        private Date GetThisOrPrevScheduledDay(Date date)
+        {
+            // `year` in 0..100 range
+            var (year, yCarry) = _bitRep.ThisOrPrevValue(YearOffset, MonthOffset - YearOffset, date.Year);
+            // `month` in 0..11 range
+            var (month, mCarry) = yCarry == 1
+                ? (_bitRep.MaxValue(MonthOffset, DayOffset - MonthOffset), 1)
+                : _bitRep.ThisOrPrevValue(MonthOffset, DayOffset - MonthOffset, date.Month);
+            // `day` to 0..31
+            var day = date.Day - mCarry;
+
+            // While there are no valid previous days in the current month of current year
+            while ((day = GetThisOrPrevValidDayInMonth(year, month, day)) == -1)
+            {
+                // Find prev month
+                (month, mCarry) = _bitRep.ThisOrPrevValue(MonthOffset, DayOffset - MonthOffset, month - 1);
+                // If no valid months are found in this year, `month` is the last valid month in a year,
+                // and previous year should be found
+                if (mCarry == 1)
+                {
+                    (year, _) = _bitRep.ThisOrPrevValue(YearOffset, MonthOffset - YearOffset, year - 1);
+                }
+
+                day = 0;
+            }
+            return new Date { Year = (byte)year, Month = (byte)month, Day = (byte)day };
+        }
+        
+        /// <summary>
+        /// Finds next scheduled time slot within a day
+        /// </summary>
+        /// <param name="time">Time from which the search is performed</param>
+        /// <returns>Either <c>(NextSuitableTime, false)</c> if slot is available during the day or
+        /// <c>(FirstSlotInADay, true)</c> if no slots are available.</returns>
+        /// <exception cref="System.InvalidOperationException">Functions called by this method throw if bit representation is invalid (e.g. when no hours are set in the schedule).
+        /// Throwing functions are <see cref="TestApp.Helper.ThisOrNextValue">ThisOrNextValue</see> and <see cref="TestApp.Helper.MinValue">MinValue</see> 
+        /// </exception>
+        private (Time Time, bool NextDay) GetThisOrNextScheduledTime(Time time)
+        {
+            // Find next scheduled millisecond
+            var (mSec, mSecCarry) = _bitRep.ThisOrNextValue(
+                MillisecondOffset, BitLength - MillisecondOffset, time.Millisecond
+            );
+            // Find next scheduled minute (accounting for carried over unit)
+            var (sec, secCarry) = _bitRep.ThisOrNextValue(
+                SecondOffset, MillisecondOffset - SecondOffset, time.Second + mSecCarry
+            );
+            // Same for minutes
+            var (min, minCarry) = _bitRep.ThisOrNextValue(
+                MinuteOffset, SecondOffset - MinuteOffset, time.Minute + secCarry
+            );
+            // And hours
+            var (hour, hourCarry) = _bitRep.ThisOrNextValue(
+                HourOffset, MinuteOffset - HourOffset, time.Hour + minCarry
+            );
+
+            // Construct result in the reverse order
+            return (
+                new Time
+                {
+                    // As is
+                    Hour = (byte)hour,
+                    // Either scheduled minutes or first scheduled minute in a day if 
+                    // hour was carried over (== next day)
+                    Minute = (byte)(
+                        hourCarry is 1 
+                        ? _bitRep.MinValue(MinuteOffset, SecondOffset - MinuteOffset)
+                        : min
+                    ),
+                    // Same
+                    Second = (byte) (
+                        hourCarry is 1 || minCarry is 1
+                        ? _bitRep.MinValue(SecondOffset, MillisecondOffset - SecondOffset)
+                        : sec
+                    ),
+                    // Same
+                    Millisecond = (byte) (
+                        hourCarry is 1 || minCarry is 1 || secCarry is 1
+                        ? _bitRep.MinValue(MillisecondOffset, BitLength - MillisecondOffset)
+                        : mSec
+                    )
+                },
+                // Request for the next day
+                hourCarry == 1
+            );
+        }
+
+        private Time GetFirstTimeSlotInADay() =>
+            new()
+            {
+                Hour = (byte)_bitRep.MinValue(HourOffset, MinuteOffset - HourOffset),
+                Minute = (byte)_bitRep.MinValue(MinuteOffset, SecondOffset - MinuteOffset),
+                Second = (byte) _bitRep.MinValue(SecondOffset, MillisecondOffset - SecondOffset),
+                Millisecond = _bitRep.MinValue(MillisecondOffset, BitLength - MillisecondOffset),
+            };
+
+        private (Time Time, bool PrevDay) GetThisOrPrevScheduledTime(Time time)
+        {
+            // Find next scheduled millisecond
+            var (mSec, mSecCarry) = _bitRep.ThisOrPrevValue(
+                MillisecondOffset, BitLength - MillisecondOffset, time.Millisecond
+            );
+            // Find next scheduled minute (accounting for carried over unit)
+            var (sec, secCarry) = _bitRep.ThisOrPrevValue(
+                SecondOffset, MillisecondOffset - SecondOffset, time.Second - mSecCarry
+            );
+            // Same for minutes
+            var (min, minCarry) = _bitRep.ThisOrPrevValue(
+                MinuteOffset, SecondOffset - MinuteOffset, time.Minute - secCarry
+            );
+            // And hours
+            var (hour, hourCarry) = _bitRep.ThisOrPrevValue(
+                HourOffset, MinuteOffset - HourOffset, time.Hour - minCarry
+            );
+
+            // Construct result in the reverse order
+            return (
+                new Time
+                {
+                    // As is
+                    Hour = (byte)hour,
+                    // Either scheduled minutes or first scheduled minute in a day if 
+                    // hour was carried over (== next day)
+                    Minute = (byte)(
+                        hourCarry is 1 
+                        ? _bitRep.MaxValue(MinuteOffset, SecondOffset - MinuteOffset)
+                        : min
+                    ),
+                    // Same
+                    Second = (byte) (
+                        hourCarry is 1 || minCarry is 1
+                        ? _bitRep.MaxValue(SecondOffset, MillisecondOffset - SecondOffset)
+                        : sec
+                    ),
+                    // Same
+                    Millisecond = (byte) (
+                        hourCarry is 1 || minCarry is 1 || secCarry is 1
+                        ? _bitRep.MaxValue(MillisecondOffset, BitLength - MillisecondOffset)
+                        : mSec
+                    )
+                },
+                // Request for the next day
+                hourCarry == 1
+            );
         }
     }
 }
