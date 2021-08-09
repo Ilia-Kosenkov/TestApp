@@ -150,6 +150,19 @@ namespace TestApp.Test
 				DateTime.ParseExact(testCase.Time, "yyyy-MM-dd HH:mm:ss.fff",  DateTimeFormatInfo.InvariantInfo),
 				DateTime.ParseExact(testCase.Result, "yyyy-MM-dd HH:mm:ss.fff",  DateTimeFormatInfo.InvariantInfo)
 			);
+
+		public static IEnumerable ScheduleTests_NoNextEventAvailable_Source =>
+			ScheduleProviderSource.Select(x => new TestCaseData(
+					x.GetSchedule("2020.*.* *:*:*"),
+					new DateTime(2021, 1, 1)
+				));
+
+		public static IEnumerable ScheduleTests_NoPrevEventAvailable_Source =>
+			ScheduleProviderSource.Select(x => new TestCaseData(
+				x.GetSchedule("2020.*.* *:*:*"),
+				new DateTime(2019, 1, 1)
+			));
+		
 	}
 	
 	[TestFixture]
@@ -182,6 +195,22 @@ namespace TestApp.Test
 		public void PrevEvent (ISchedule schedule, DateTime time, DateTime expectedResult)
 		{
 			Assert.AreEqual (expectedResult, schedule.PrevEvent (time));
+		}
+
+		[Test]
+		[TestCaseSource(typeof(ScheduleTests_DataProvider), nameof(ScheduleTests_DataProvider.ScheduleTests_NoNextEventAvailable_Source))]
+		public void NoNextEventAvailable(ISchedule schedule, DateTime searchForwardFrom)
+		{
+			Assert.That(() => schedule.NextEvent(searchForwardFrom), Throws.Exception);
+			Assert.That(() => schedule.NearestEvent(searchForwardFrom), Throws.Exception);
+		}
+		
+		[Test]
+		[TestCaseSource(typeof(ScheduleTests_DataProvider), nameof(ScheduleTests_DataProvider.ScheduleTests_NoPrevEventAvailable_Source))]
+		public void NoPrevEventAvailable(ISchedule schedule, DateTime searchForwardFrom)
+		{
+			Assert.That(() => schedule.PrevEvent(searchForwardFrom), Throws.Exception);
+			Assert.That(() => schedule.NearestPrevEvent(searchForwardFrom), Throws.Exception);
 		}
 	}
 }
