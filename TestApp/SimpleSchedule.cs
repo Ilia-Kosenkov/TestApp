@@ -61,8 +61,7 @@ namespace TestApp
                 return scheduledDate.WithTime(scheduledTime);
             }
             // Otherwise, find next day
-            // (date, _) = t1.AddDays(1);
-            date = new Date { Year = date.Year, Month = date.Month, Day = (byte)(date.Day + 1)};
+            date = date.IncDay();
             scheduledDate = GetThisOrNextScheduledDay(date);
 
             // At this point, `scheduledTime` is the first time slot within a day.
@@ -92,9 +91,8 @@ namespace TestApp
             {
                 return scheduledDate.WithTime(scheduledTime);
             }
-            // Otherwise, find next day
-            // For now, use this bypass
-            (date, _) = date.WithTime(new Time()).AddDays(-1);
+            // Otherwise, find previous day
+            date = date.DecDay();
             
             scheduledDate = GetThisOrPrevScheduledDay(date);
 
@@ -133,7 +131,7 @@ namespace TestApp
             var nDays = day.DaysInCurrentMonth;
             for (var i = thisDay; i < nDays; i++)
             {
-                day = day.WithDay((byte)i); 
+                day = day.WithDay((sbyte)i); 
                 // Match day of week
                 if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek))
                 {
@@ -154,7 +152,7 @@ namespace TestApp
             var nDays = day.DaysInCurrentMonth;
             for (var i = thisDay; i >= 0; i--)
             {
-                day = day.WithDay((byte)i); 
+                day = day.WithDay((sbyte)i); 
                 // Match day of week
                 if (!_bitRep.Get(WeekDayOffset + day.DayOfWeek))
                 {

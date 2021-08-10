@@ -71,7 +71,88 @@ namespace TestApp
         public void Deconstruct(out byte year, out byte month, out byte day) =>
             (year, month, day) = (Year, Month, Day);
 
-        public Date WithDay(byte day) => new() { Year = Year, Month = Month, Day = day };
+        public Date WithDay(sbyte day)
+        {
+            if (day >= 0 && day < DaysInCurrentMonth)
+            {
+                return new Date { Year = Year, Month = Month, Day = (byte)day };
+            }
+
+            
+            var (year, month) = (Year, Month);
+
+            if (day >= 0)
+            {
+                byte nDays;
+                while (day >= (nDays = DaysInMonth(year, month)))
+                {
+                    day = (sbyte)(day - nDays);
+                    month++;
+                    if (month != 12)
+                    {
+                        continue;
+                    }
+
+                    year++;
+                    month = 0;
+                }
+            }
+            else
+            {
+                while (day <= 0)
+                {
+                    if (month == 0)
+                    {
+                        month = 11;
+                        year--;
+                    }
+                    else
+                    {
+                        month--;
+                    }
+
+                    day = (sbyte)(day + DaysInMonth(year, month));
+                }
+            }
+            
+            return new Date { Year = year, Month = month, Day = (byte)day };
+
+
+
+            throw new NotImplementedException();
+        }
+
+        public Date IncDay()
+        {
+            if (Day != DaysInCurrentMonth)
+            {
+                return new Date { Year = Year, Month = Month, Day = (byte)(Day + 1)};
+            }
+
+            var (year, month) = Month switch
+            {
+                11 => ((byte)(Year + 1), (byte)0),
+                _ => (Year, (byte)(Month + 1))
+            };
+
+            return new Date { Year = year, Month = month, Day = 0 };
+        }
+        
+        public Date DecDay()
+        {
+            if (Day != 0)
+            {
+                return new Date { Year = Year, Month = Month, Day = (byte)(Day - 1)};
+            }
+
+            var (year, month) = Month switch
+            {
+                0 => ((byte)(Year - 1), (byte)11),
+                _ => (Year, (byte)(Month - 1))
+            };
+
+            return new Date { Year = year, Month = month, Day = DaysInMonth(year, month) };
+        }
         
         public override string ToString() => 
             $"{Year + YearOffset:D4}.{Month + MonthOffset:D2}.{Day + DayOffset:D2}";
