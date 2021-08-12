@@ -23,7 +23,7 @@ namespace TestApp
         /// Validates instance of <see cref="TestApp.ScheduleRep"/>.
         ///  </summary>
         /// <exception cref="TestApp.ValidationException">Thrown if validation fails.</exception>
-        public void Validate()
+        public ScheduleRep Validate()
         {
             Years.Validate(2000, 2100);
             Months.Validate(1, 12);
@@ -35,6 +35,8 @@ namespace TestApp
             Minutes.Validate(0, 59);
             Seconds.Validate(0, 59);
             Milliseconds.Validate(0, 999);
+
+            return this;
         }
         
         public override string ToString() =>

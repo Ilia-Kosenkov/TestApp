@@ -203,9 +203,16 @@ namespace TestApp
         {
             try
             {
+                var nAny = 0;
                 foreach (var item in Items)
                 {
                     item.Validate(lowerLimit, upperLimit);
+
+                    if (item is AnyInput && ++nAny > 1)
+                    {
+                        throw new ValidationException(typeof(ListInput), lowerLimit, lowerLimit, upperLimit, "Multiple '*' in a list");
+
+                    }
                 }
             }
             catch (ValidationException vex)

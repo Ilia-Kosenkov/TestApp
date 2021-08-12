@@ -14,41 +14,51 @@ namespace TestApp
         ///     yyyy.MM.dd w HH:mm:ss.fff      7
         public ScheduleRep Parse(ReadOnlySpan<char> input)
         {
-            input = input.Trim();
             Span<int> sepPositions = stackalloc int[9]; // 7 from the input plus lower and upper limit
+            Span<char> sepTypes = stackalloc char[7];
             sepPositions[0] = -1;
-            var sepCount = 1;
+            var sepCount = 0;
 
             for (var i = 0; i < input.Length; i++)
             {
-                if (input[i] is '.' or ':' or ' ')
+                switch (input[i])
                 {
-                    if (sepCount == 8)
-                    {
-                        throw new ArgumentException("Too many separators ('.', ':' or ' ') in the string");
-                    }
-                    sepPositions[sepCount++] = i;
+                    case >= '0' and <= '9' or '*' or '/' or ',' or '-':
+                        continue;
+                    case var ch and ('.' or ' ' or ':'):
+                        sepTypes[sepCount] = ch;
+                        sepPositions[++sepCount] = i;
+                        break;
+                    case var ch:
+                        throw new ArgumentException($"Invalid symbol '{ch}'");
+                }
+
+                if (sepCount == 8)
+                {
+                    throw new ArgumentException("Too many separators ('.', ':' or ' ') in the string");
                 }
             }
 
-            sepPositions[sepCount] = input.Length;
-            sepPositions = sepPositions.Slice(0, sepCount + 1);
-
+            sepPositions[sepCount + 1] = input.Length;
+            sepPositions = sepPositions.Slice(0, sepCount + 2);
+            sepTypes = sepTypes[..sepCount];
             // Match with the number of actually found separators
-            var result =  (sepCount - 1) switch
+            return (sepCount switch
             {
-                2 => Parse_HH_mm_ss(input, sepPositions),
-                3 => Parse_HH_mm_ss_fff(input, sepPositions),
-                5 => Parse_yyyy_MM_dd_HH_mm_ss(input, sepPositions),
-                6 when HasMilliseconds(input) => Parse_yyyy_MM_dd_HH_mm_ss_fff(input, sepPositions),
-                6 => Parse_yyyy_MM_dd_w_HH_mm_ss(input, sepPositions),
-                7 => Parse_yyyy_MM_dd_w_HH_mm_ss_fff(input, sepPositions),
+                2 when sepTypes.SequenceEqual(stackalloc char[] { ':', ':' }) => Parse_HH_mm_ss(input, sepPositions),
+                3 when sepTypes.SequenceEqual(stackalloc char[] { ':', ':', '.' }) => Parse_HH_mm_ss_fff(
+                    input, sepPositions
+                ),
+                5 when sepTypes.SequenceEqual(stackalloc char[] { '.', '.', ' ', ':', ':' }) =>
+                    Parse_yyyy_MM_dd_HH_mm_ss(input, sepPositions),
+                6 when sepTypes.SequenceEqual(stackalloc char[] { '.', '.', ' ', ' ', ':', ':' }) =>
+                    Parse_yyyy_MM_dd_w_HH_mm_ss(input, sepPositions),
+                6 when sepTypes.SequenceEqual(stackalloc char[] { '.', '.', ' ', ':', ':', '.' }) =>
+                    Parse_yyyy_MM_dd_HH_mm_ss_fff(input, sepPositions),
+                7 when sepTypes.SequenceEqual(stackalloc char[] { '.', '.', ' ', ' ', ':', ':', '.' }) =>
+                    Parse_yyyy_MM_dd_w_HH_mm_ss_fff(input, sepPositions),
                 _ => throw new ArgumentException()
-            };
-
-            result.Validate();
-
-            return result;
+            }).Validate();
         }
         
         private Input ParseElement(ReadOnlySpan<char> input)
@@ -233,23 +243,6 @@ namespace TestApp
                 
                 WeekDays = ParseElement(@string[(seps[3] + 1)..seps[4]])
             };
-        }
-
-        private static bool HasMilliseconds(ReadOnlySpan<char> input)
-        {
-            for (var i = input.Length - 1; i >= 0; i--)
-            {
-                var ch = input[i];
-                switch (ch)
-                {
-                    case '.':
-                        return true;
-                    case ':':
-                        return false;
-                }
-            }
-
-            throw new ArgumentException("Invalid input string");
         }
     }
 }
